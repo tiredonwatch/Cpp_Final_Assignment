@@ -45,13 +45,26 @@ private:
     string location;
     double budget;
     vector<Professor*> professors;
-
+    vector<Student*> students;
+    vector<Course*> courses;
 public:
     Department(string name, string location, double budget)
         : name(name), location(location), budget(budget) {}
 
     void addProfessor(Professor* p) {
         professors.push_back(p);
+    }
+
+    void addStudent(Student* s) {
+        students.push_back(s);
+    }
+
+    void addCourse(Course* c) {
+        courses.push_back(c);
+    }
+
+    void displaySummary() {
+        cout << "Department: " << name << ", Professors: " << professors.size() << ", Students: " << students.size() << ", Courses: " << courses.size() << endl;
     }
 };
 
@@ -62,10 +75,19 @@ private:
     int credits;
     string description;
     Professor* instructor;
+    vector<Student*> enrolledStudents;
 
 public:
     Course(string code, string title, int credits, string description, Professor* instructor)
         : code(code), title(title), credits(credits > 0 ? credits : 3), description(description), instructor(instructor) {}
+
+    void addStudent(Student* s) {
+        enrolledStudents.push_back(s);
+    }
+
+    void displayEnrolledStudents() {
+        cout << "Course: " << title << " has " << enrolledStudents.size() << " enrolled students." << endl;
+    }
 };
 
 class Student : public Person {
@@ -88,6 +110,7 @@ public:
 
     void enrollInCourse(Course* course) {
         courses.push_back(course);
+        course->addStudent(this);
     }
 
     double getGPA() { return gpa; }
@@ -106,7 +129,7 @@ public:
     }
 
     double calculatePayment() override {
-        return 2000.0;
+        return gpa > 3.7 ? 1000.0 : 2000.0;
     }
 };
 
@@ -133,6 +156,7 @@ private:
     Professor* advisor;
     string thesisTitle;
     vector<string> assistantships;
+    bool thesisApproved = false;
 
 public:
     GraduateStudent(string name, int age, string id, string contactInfo, string enrollmentDate, double gpa,
@@ -142,7 +166,8 @@ public:
 
     void displayDetails() override {
         Student::displayDetails();
-        cout << "Research Topic: " << researchTopic << ", Thesis Title: " << thesisTitle << endl;
+        cout << "Research Topic: " << researchTopic << ", Thesis Title: " << thesisTitle;
+        cout << ", Thesis Approved: " << (thesisApproved ? "Yes" : "No") << endl;
         if (!assistantships.empty()) {
             cout << "Assistantships: ";
             for (int i = 0; i < assistantships.size(); i++) {
@@ -159,7 +184,13 @@ public:
             cout << "Assistantship assigned: " << type << endl;
         }
     }
+
+    void approveThesis() {
+        thesisApproved = true;
+        cout << "Thesis approved." << endl;
+    }
 };
+
 
 class Professor : public Person {
 protected:
@@ -170,7 +201,8 @@ protected:
     double baseSalary;
 
 public:
-    Professor() {}
+    Professor() : Person("", 0, "", ""), department(""), specialization(""), hireDate(""), yearsOfService(0), baseSalary(0.0) {}
+
     Professor(string name, int age, string id, string contactInfo, string department, string specialization, string hireDate, int yearsOfService, double baseSalary)
         : Person(name, age, id, contactInfo), department(department), specialization(specialization), hireDate(hireDate), yearsOfService(yearsOfService), baseSalary(baseSalary) {}
 
@@ -181,6 +213,10 @@ public:
     virtual void displayDetails() override {
         Person::displayDetails();
         cout << "Department: " << department << ", Specialization: " << specialization << ", Hire Date: " << hireDate << ", Years of Service: " << yearsOfService << ", Base Salary: " << baseSalary << endl;
+    }
+
+    void approveThesis(GraduateStudent* student) {
+        student->approveThesis();
     }
 };
 
@@ -203,6 +239,7 @@ public:
         return baseSalary + 300 * yearsOfService;
     }
 };
+
 
 class FullProfessor : public Professor {
 private:
@@ -229,6 +266,10 @@ private:
 
 public:
     Classroom(string building, int roomNumber) : building(building), roomNumber(roomNumber) {}
+
+    void displayDetails() {
+        cout << "Classroom - Building: " << building << ", Room Number: " << roomNumber << endl;
+    }
 };
 
 class Schedule {
@@ -239,6 +280,14 @@ public:
     void addTimeSlot(string slot) {
         timeSlots.push_back(slot);
     }
+
+    void displaySchedule() {
+        cout << "Schedule Time Slots: ";
+        for (const string& slot : timeSlots) {
+            cout << slot << ", ";
+        }
+        cout << endl;
+    }
 };
 
 class University {
@@ -248,6 +297,13 @@ private:
 public:
     void addDepartment(Department* dept) {
         departments.push_back(dept);
+    }
+
+    void displayDepartments() {
+        cout << "University has " << departments.size() << " department(s)." << endl;
+        for (Department* d : departments) {
+            d->displaySummary();
+        }
     }
 };
 
@@ -262,104 +318,133 @@ int main() {
 
     do {
         cout << "\n=== University Management System ===\n";
-        cout << "1. Add Student\n";
-        cout << "2. Add Professor\n";
-        cout << "3. Show All People\n";
-        cout << "4. Exit\n";
+        cout << "1. Add Undergraduate Student\n";
+        cout << "2. Add Graduate Student\n";
+        cout << "3. Add Assistant Professor\n";
+        cout << "4. Add Associate Professor\n";
+        cout << "5. Add Full Professor\n";
+        cout << "6. Show All People\n";
+        cout << "7. Exit\n";
         cout << "Enter your choice: ";
         cin >> choice;
         cin.ignore();
 
         if (choice == 1) {
-            Student* s = new Student();
-            string name, id, contact, enrollDate;
-            int age, numPrograms;
+            string name, id, contact, enrollDate, major, minor, gradDate;
+            int age;
             double gpa;
 
-            cout << "Enter student name: ";
+            cout << "Enter name: ";
             getline(cin, name);
-            s->setName(name);
-
-            cout << "Enter student age: ";
+            cout << "Enter age: ";
             cin >> age;
-            s->setAge(age);
-
-            cout << "Enter student ID: ";
-            cin >> id;
-            s->setId(id);
-
-            cout << "Enter contact info: ";
             cin.ignore();
+            cout << "Enter ID: ";
+            getline(cin, id);
+            cout << "Enter contact info: ";
             getline(cin, contact);
-            s->setContactInfo(contact);
-
-            cout << "Enter enrollment date (e.g., 2023-09-01): ";
+            cout << "Enter enrollment date: ";
             getline(cin, enrollDate);
-            s->setEnrollmentDate(enrollDate);
-
-            cout << "How many programs is the student enrolled in? ";
-            cin >> numPrograms;
-            cin.ignore();
-
-            for (int i = 0; i < numPrograms; i++) {
-                string prog;
-                cout << "Enter name of program " << (i + 1) << ": ";
-                getline(cin, prog);
-                s->addProgram(prog);
-            }
-
-            cout << "Enter student's GPA: ";
+            cout << "Enter GPA: ";
             cin >> gpa;
-            s->setGPA(gpa);
-
-            people.push_back(s);
-            cout << "Student added!\n";
-
-        } else if (choice == 2) {
-            Professor* p = new Professor();
-            string name, id, contact, dept, spec, hireDate;
-            int age;
-
-            cout << "Enter professor name: ";
-            getline(cin, name);
-            p->setName(name);
-
-            cout << "Enter professor age: ";
-            cin >> age;
-            p->setAge(age);
-
-            cout << "Enter professor ID: ";
-            cin >> id;
-            p->setId(id);
-
-            cout << "Enter contact info: ";
             cin.ignore();
-            getline(cin, contact);
-            p->setContactInfo(contact);
+            cout << "Enter major: ";
+            getline(cin, major);
+            cout << "Enter minor: ";
+            getline(cin, minor);
+            cout << "Enter expected graduation date: ";
+            getline(cin, gradDate);
 
+            UndergraduateStudent* s = new UndergraduateStudent(name, age, id, contact, enrollDate, gpa, major, minor, gradDate);
+            people.push_back(s);
+            cout << "Undergraduate Student added!\n";
+        }
+        else if (choice == 2) {
+            string name, id, contact, enrollDate, researchTopic, thesisTitle;
+            int age;
+            double gpa;
+
+            cout << "Enter name: ";
+            getline(cin, name);
+            cout << "Enter age: ";
+            cin >> age;
+            cin.ignore();
+            cout << "Enter ID: ";
+            getline(cin, id);
+            cout << "Enter contact info: ";
+            getline(cin, contact);
+            cout << "Enter enrollment date: ";
+            getline(cin, enrollDate);
+            cout << "Enter GPA: ";
+            cin >> gpa;
+            cin.ignore();
+            cout << "Enter research topic: ";
+            getline(cin, researchTopic);
+            cout << "Enter thesis title: ";
+            getline(cin, thesisTitle);
+
+            GraduateStudent* s = new GraduateStudent(name, age, id, contact, enrollDate, gpa, researchTopic, nullptr, thesisTitle);
+            int numAssist;
+            cout << "How many assistantships? ";
+            cin >> numAssist;
+            cin.ignore();
+            for (int i = 0; i < numAssist; i++) {
+                string assist;
+                cout << "Enter assistantship " << (i + 1) << ": ";
+                getline(cin, assist);
+                s->addAssistantship(assist);
+            }
+            people.push_back(s);
+            cout << "Graduate Student added!\n";
+        }
+        else if (choice == 3 || choice == 4 || choice == 5) {
+            string name, id, contact, dept, spec, hireDate;
+            int age, years;
+            double baseSalary;
+
+            cout << "Enter name: ";
+            getline(cin, name);
+            cout << "Enter age: ";
+            cin >> age;
+            cin.ignore();
+            cout << "Enter ID: ";
+            getline(cin, id);
+            cout << "Enter contact info: ";
+            getline(cin, contact);
             cout << "Enter department: ";
             getline(cin, dept);
-            p->setDepartment(dept);
-
             cout << "Enter specialization: ";
             getline(cin, spec);
-            p->setSpecialization(spec);
-
-            cout << "Enter hire date (e.g., 2020-08-15): ";
+            cout << "Enter hire date: ";
             getline(cin, hireDate);
-            p->setHireDate(hireDate);
+            cout << "Enter years of service: ";
+            cin >> years;
+            cout << "Enter base salary: ";
+            cin >> baseSalary;
+            cin.ignore();
 
+            Professor* p = nullptr;
+            if (choice == 3)
+                p = new AssistantProfessor(name, age, id, contact, dept, spec, hireDate, years, baseSalary);
+            else if (choice == 4)
+                p = new AssociateProfessor(name, age, id, contact, dept, spec, hireDate, years, baseSalary);
+            else {
+                double grant;
+                cout << "Enter research grant: ";
+                cin >> grant;
+                cin.ignore();
+                p = new FullProfessor(name, age, id, contact, dept, spec, hireDate, years, baseSalary, grant);
+            }
             people.push_back(p);
             cout << "Professor added!\n";
-
-        } else if (choice == 3) {
-            cout << "\n--- Showing All Persons ---\n";
-            for (int i = 0; i < people.size(); i++) {
-                testPolymorphism(people[i]);
+        }
+        else if (choice == 6) {
+            cout << "\n--- Showing All People ---\n";
+            for (Person* p : people) {
+                testPolymorphism(p);
                 cout << "--------------------------\n";
             }
         }
-
-    } while (choice != 4);
+    } while (choice != 7);
 
 }

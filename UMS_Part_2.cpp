@@ -110,7 +110,7 @@ public:
              << ", Hire Date: " << hireDate << endl;
     }
 
-    double calculatePayment() {
+    double calculatePayment() override {
         return 5000.0; 
     }
 };
